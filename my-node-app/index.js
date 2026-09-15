@@ -1,31 +1,50 @@
 const http = require('http');
+const EventEmitter = require('events');
+const logger = require('./logger');
 
-const STUDENT_NAME = 'Sadykov Aleksandr Vyacheslavovich';
-const STUDENT_GROUP = '477';
-const JOURNAL_NUMBER = 19;
+class AppServer extends EventEmitter {
+    constructor() {
+        super();
 
-function calculatePi(digits) {
-  let pi = 3.0;
-  let sign = 1;
-  for (let i = 2; i < 400000; i += 2) {
-    pi += sign * (4 / (i * (i + 1) * (i + 2)));
-    sign = -sign;
-  }
-  return pi.toFixed(digits);
+        this.server = http.createServer((req, res) => {
+            this.emit('request:received', { url: req.url, method: req.method });
+
+            res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+            res.end('Hello from Event-Driven Server!');
+        });
+    }
+
+    start(port) {
+        this.server.listen(port, () => {
+            this.emit('server:started', port);
+        });
+    }
+
+    stop() {
+        this.server.close(() => {
+            this.emit('server:stopped');
+        });
+    }
 }
 
-const piValue = calculatePi(JOURNAL_NUMBER);
+const app = new AppServer();
 
-const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-  res.end(\
-    <p>\</p>
-    <p>\</p>
-    <p>         (      : \): \</p>
-  \);
+logger.setupLogger(app);
+
+app.on('server:started', (port) => {
+    console.log(`Server zapyshchen na porty ${port}`);
 });
 
-const PORT = 3000;
-server.listen(PORT, () => {
-  console.log(\                  http://localhost:\\);
+app.on('request:received', (requestData) => {
+    console.log(`Polychen zapros: ${requestData.method} ${requestData.url}`);
 });
+
+app.on('server:stopped', () => {
+    console.log(`Servak ostanovlen`);
+});
+
+app.start(3000);
+
+setTimeout(() => {
+    app.stop();
+}, 10000);
